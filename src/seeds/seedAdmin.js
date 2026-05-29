@@ -18,7 +18,7 @@ const seedAdmin = async () => {
     const existingAdmin = await User.findOne({ email });
 
     if (existingAdmin) {
-      console.log("Admin already exists. Skipping seed.");
+      console.log("Admin already exists.");
       process.exit(0);
     }
 

@@ -15,18 +15,34 @@ import {
 
 const router = Router();
 
-// PUBLIC
-router.post("/issue", asyncHandler(issueToken));
+// ===== PUBLIC ENDPOINTS =====
+// Get token status (anyone can check their token status without auth)
 router.get("/:id/status", asyncHandler(getTokenStatus));
 
-// STAFF/ADMIN
+// ===== AUTHENTICATED USER ENDPOINTS =====
+// Issue/join a token via QR scan (requires authentication)
+router.post("/issue", protect, asyncHandler(issueToken));
+
+// ===== STAFF/ADMIN ENDPOINTS =====
+// List all tokens (staff can see their department's tokens)
 router.get("/", protect, authorize("admin", "staff"), asyncHandler(listTokens));
+
+// Serve next token in queue
 router.post("/serve-next", protect, authorize("admin", "staff"), asyncHandler(serveNext));
 
+// Call next token (change status to "called")
 router.patch("/:id/call", protect, authorize("admin", "staff"), asyncHandler(callToken));
+
+// Mark token as being served
 router.patch("/:id/serve", protect, authorize("admin", "staff"), asyncHandler(serveToken));
+
+// Mark token as completed
 router.patch("/:id/complete", protect, authorize("admin", "staff"), asyncHandler(completeToken));
+
+// Mark token as missed
 router.patch("/:id/miss", protect, authorize("admin", "staff"), asyncHandler(missToken));
+
+// Cancel a token
 router.patch("/:id/cancel", protect, authorize("admin", "staff"), asyncHandler(cancelToken));
 
 export default router;

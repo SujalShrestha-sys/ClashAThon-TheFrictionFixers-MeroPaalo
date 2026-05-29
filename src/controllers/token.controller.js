@@ -35,32 +35,65 @@ const createTokenWithRetry = async ({ department, queueDay, customer }) => {
 export const issueToken = async (req, res) => {
   const { department, date } = req.body;
 
+  // Validate required field
   if (!department) {
     res.status(400);
     throw new Error("department is required");
   }
 
+  // Ensure user is authenticated (required for QR scanning flow)
+  // Frontend must have called GET /api/qr/validate first to check auth status
+  if (!req.user || !req.user._id) {
+    res.status(401);
+    throw new Error("Authentication required. Please log in to join the queue.");
+  }
+
+  // Parse date or use today
   const targetDate = date ? parseDateOnly(date) : getTodayDateOnly();
   if (!targetDate) {
     res.status(400);
     throw new Error("date must be in YYYY-MM-DD format");
   }
 
-  const queueDay = await QueueDay.findOne({ department, date: targetDate, status: "active" });
+  // Check if queue is active for the department on the target date
+  const queueDay = await QueueDay.findOne({
+    department,
+    date: targetDate,
+    status: "active"
+  });
+
   if (!queueDay) {
     res.status(400);
-    throw new Error("Queue is not active for this department today");
+    throw new Error("Queue is not active for this department on the selected date");
   }
 
-  const customerId = req.user?._id; // optional
-  const token = await createTokenWithRetry({ department, queueDay: queueDay._id, customer: customerId });
+  // Create token with authenticated user as customer
+  const customerId = req.user._id;
+  const token = await createTokenWithRetry({
+    department,
+    queueDay: queueDay._id,
+    customer: customerId
+  });
 
-  await TokenHistory.create({ token: token._id, status: "waiting", note: "Token issued" });
+  // Record token issuance in history
+  await TokenHistory.create({
+    token: token._id,
+    status: "waiting",
+    note: "Token issued"
+  });
 
-  emitDept(req, department, "token:issued", { tokenId: token._id, tokenNumber: token.tokenNumber });
+  // Notify dashboard and token room about new token
+  emitDept(req, department, "token:issued", {
+    tokenId: token._id,
+    tokenNumber: token.tokenNumber
+  });
   emitDept(req, department, "dashboard:changed", { department });
 
-  res.status(201).json({ success: true, data: token });
+  // Return newly created token
+  res.status(201).json({
+    success: true,
+    data: token
+  });
 };
 
 export const listTokens = async (req, res) => {

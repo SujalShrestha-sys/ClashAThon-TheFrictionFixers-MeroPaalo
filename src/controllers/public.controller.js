@@ -2,6 +2,14 @@ import Department from "../model/department.model.js";
 import QueueDay from "../model/queueDay.model.js";
 import { getTodayDateOnly } from "../utils/dateOnly.js";
 
+// public API to get all active departments
+export const getDepartmentsPublic = async (req, res) => {
+  const departments = await Department.find({ isActive: true })
+    .select("_id name description")
+    .sort({ createdAt: -1 });
+  res.json({ success: true, data: departments });
+};
+
 // public API to get queue info for a department
 export const getQueueInfo = async (req, res) => {
   const { departmentId } = req.params;
