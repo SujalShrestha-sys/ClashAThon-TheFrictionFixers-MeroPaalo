@@ -11,6 +11,7 @@ import {
   missToken,
   cancelToken,
   getTokenStatus,
+  getMyTokenHistory,
 } from "../controllers/token.controller.js";
 
 const router = Router();
@@ -22,6 +23,7 @@ router.get("/:id/status", asyncHandler(getTokenStatus));
 // ===== AUTHENTICATED USER ENDPOINTS =====
 // Issue/join a token via QR scan (requires authentication)
 router.post("/issue", protect, asyncHandler(issueToken));
+router.get("/history", protect, asyncHandler(getMyTokenHistory));
 
 // ===== STAFF/ADMIN ENDPOINTS =====
 // List all tokens (staff can see their department's tokens)

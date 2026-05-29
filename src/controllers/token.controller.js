@@ -96,6 +96,18 @@ export const issueToken = async (req, res) => {
   });
 };
 
+export const getMyTokenHistory = async (req, res) => {
+  const tokens = await Token.find({ customer: req.user._id })
+    .populate("department", "name description")
+    .populate("queueDay", "date status")
+    .sort({ issuedAt: -1 });
+
+  res.json({
+    success: true,
+    data: tokens,
+  });
+};
+
 export const listTokens = async (req, res) => {
   const { department, queueDay, status } = req.query;
 

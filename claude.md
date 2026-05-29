@@ -59,7 +59,109 @@ All endpoints follow this standard:
 
 **Status codes matter**: Controllers set `res.status(code)` before throwing errors. The error middleware converts them to JSON.
 
-### Authentication & Authorization
+## API Endpoints
+Base URL: `http://localhost:5000/api`
+
+### Auth (public)
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/logout`
+- `POST /auth/forgot-password`
+- `GET /auth/reset-password/:token`
+- `POST /auth/reset-password/:token`
+
+### Departments
+- `GET /departments` — requires `admin` or `staff`
+- `POST /departments` — requires `admin`
+- `GET /departments/:id` — requires `admin` or `staff`
+- `PATCH /departments/:id` — requires `admin`
+- `DELETE /departments/:id` — requires `admin`
+
+### Counters
+- `GET /counters` — requires `admin` or `staff`
+- `POST /counters` — requires `admin`
+- `PATCH /counters/:id` — requires `admin`
+- `PATCH /counters/:id/assign-staff` — requires `admin`
+
+### Queue Days
+- `GET /queue-days` — requires `admin` or `staff`
+- `POST /queue-days/open` — requires `admin`
+- `PATCH /queue-days/:id/close` — requires `admin`
+- `PATCH /queue-days/:id/pause` — requires `admin`
+- `PATCH /queue-days/:id/resume` — requires `admin`
+- `POST /queue-days/:id/reset` — requires `admin`
+
+### Tokens
+- `GET /tokens/:id/status` — public
+- `POST /tokens/issue` — requires auth
+- `GET /tokens/history` — requires auth
+- `GET /tokens` — requires `admin` or `staff`
+- `POST /tokens/serve-next` — requires `admin` or `staff`
+- `PATCH /tokens/:id/call` — requires `admin` or `staff`
+- `PATCH /tokens/:id/serve` — requires `admin` or `staff`
+- `PATCH /tokens/:id/complete` — requires `admin` or `staff`
+- `PATCH /tokens/:id/miss` — requires `admin` or `staff`
+- `PATCH /tokens/:id/cancel` — requires `admin` or `staff`
+
+### Display
+- `GET /display` — public
+- `GET /display/rows` — requires `admin` or `staff`
+
+### Admin
+- `GET /admin/dashboard` — requires `admin`
+
+### Public
+- `GET /public/departments` — public
+- `GET /public/queue/:departmentId/info` — public
+
+### Users
+- `GET /users` — requires `admin`
+- `PATCH /users/:userId/role` — requires `admin`
+- `PATCH /users/:userId/department` — requires `admin`
+
+### QR
+- `GET /qr` — public
+- `GET /qr/validate` — public
+
+### Notes
+- Protected endpoints accept JWT in `Authorization: Bearer <token>` or cookie `token`.
+- `GET /tokens/history` returns the logged-in user’s join history.
+
+### Authentication roles
+- `admin` — full management
+- `staff` — read and token queue operations for department
+- authenticated customer — issue token, view own history
+
+### Testing tips
+- Start with public endpoints first, then authenticate for protected routes.
+- Use `/auth/login` to get a valid token or cookie before testing auth-required routes.
+
+### Endpoint order
+The list above follows the route groups in `src/routes/routes.js`.
+
+### Helper
+If you need the exact request body shape for a route, check the matching controller in `src/controllers/`.
+
+### Quick test sequence
+1. `POST /auth/register`
+2. `POST /auth/login`
+3. `GET /departments`
+4. `GET /public/departments`
+5. `GET /qr/validate?department=<id>`
+6. `POST /tokens/issue`
+7. `GET /tokens/history`
+8. `GET /tokens/:id/status`
+9. `GET /display`
+10. `GET /admin/dashboard` (admin only)
+
+### Use case
+This list is enough to manually exercise the API in Postman, curl, or a frontend test harness.
+
+
+### Keep in mind
+- `POST /queue-days/open` is used to open a queue for a department/day.
+- `GET /tokens/:id/status` is the token status check that can be used publicly.
+- `POST /tokens/issue` and `GET /tokens/history` are the user-facing queue actions.
 
 - **Token storage**: JWT in httpOnly cookies (`token`) + optional `Authorization: Bearer <jwt>` header
 - **Roles**: `admin`, `staff`, `customer` (default on registration)
