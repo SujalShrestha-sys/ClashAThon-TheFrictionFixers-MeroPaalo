@@ -2,6 +2,10 @@ import Display from "../model/tokenDisplay.model.js";
 import Token from "../model/token.model.js";
 import QueueDay from "../model/queueDay.model.js";
 import { getTodayDateOnly } from "../utils/dateOnly.js";
+import { getMessage } from "../config/messages.js";
+
+const successMessage = (key) => getMessage("success", key);
+const errorMessage = (key) => getMessage("error", key);
 
 // public display
 export const getDisplay = async (req, res) => {
@@ -9,7 +13,7 @@ export const getDisplay = async (req, res) => {
 
   if (!department) {
     res.status(400);
-    throw new Error("department is required");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   let displayRow = null;
@@ -49,6 +53,7 @@ export const getDisplay = async (req, res) => {
 
   res.json({
     success: true,
+    message: successMessage("operationCompleted"),
     data: {
       department,
       queueStatus: queueDay?.status || "closed",
@@ -75,5 +80,5 @@ export const listDisplayRows = async (req, res) => {
     })
     .sort({ updatedAt: -1 });
 
-  res.json({ success: true, data: rows });
+  res.json({ success: true, message: successMessage("requestAuthorized"), data: rows });
 };

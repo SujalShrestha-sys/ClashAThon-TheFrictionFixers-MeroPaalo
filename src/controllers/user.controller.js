@@ -1,5 +1,9 @@
 import User from "../model/user.model.js";
 import Department from "../model/department.model.js";
+import { getMessage } from "../config/messages.js";
+
+const successMessage = (key) => getMessage("success", key);
+const errorMessage = (key) => getMessage("error", key);
 
 // admin assigns role to a user
 export const assignRole = async (req, res) => {
@@ -8,13 +12,13 @@ export const assignRole = async (req, res) => {
 
   if (!role || !["staff", "customer", "admin"].includes(role)) {
     res.status(400);
-    throw new Error("role must be one of: staff, customer, admin");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const user = await User.findById(userId);
   if (!user) {
     res.status(404);
-    throw new Error("User not found");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   user.role = role;
@@ -25,6 +29,7 @@ export const assignRole = async (req, res) => {
 
   res.json({
     success: true,
+    message: successMessage("dataSaved"),
     data: {
       id: user._id,
       name: user.name,
@@ -42,12 +47,12 @@ export const assignDepartment = async (req, res) => {
   const user = await User.findById(userId);
   if (!user) {
     res.status(404);
-    throw new Error("User not found");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   if (user.role !== "staff") {
     res.status(400);
-    throw new Error("Only staff users can be assigned to a department");
+    throw new Error(errorMessage("authorizationDenied"));
   }
 
   if (!departmentId) {
@@ -57,6 +62,7 @@ export const assignDepartment = async (req, res) => {
 
     return res.json({
       success: true,
+      message: successMessage("dataSaved"),
       data: {
         id: user._id,
         name: user.name,
@@ -69,7 +75,7 @@ export const assignDepartment = async (req, res) => {
   const department = await Department.findById(departmentId).select("_id name");
   if (!department) {
     res.status(404);
-    throw new Error("Department not found");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   user.department = department._id;
@@ -78,6 +84,7 @@ export const assignDepartment = async (req, res) => {
 
   res.json({
     success: true,
+    message: successMessage("dataSaved"),
     data: {
       id: user._id,
       name: user.name,
@@ -97,5 +104,5 @@ export const listUsers = async (req, res) => {
     .select("-password")
     .populate("department", "name")
     .sort({ createdAt: -1 });
-  res.json({ success: true, data: users });
+  res.json({ success: true, message: successMessage("requestAuthorized"), data: users });
 };

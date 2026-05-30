@@ -4,6 +4,10 @@ import Department from "../model/department.model.js";
 import TokenHistory from "../model/tokenHistory.model.js";
 import Display from "../model/tokenDisplay.model.js";
 import { getTodayDateOnly, parseDateOnly } from "../utils/dateOnly.js";
+import { getMessage } from "../config/messages.js";
+
+const successMessage = (key) => getMessage("success", key);
+const errorMessage = (key) => getMessage("error", key);
 
 const pad = (n, width = 3) => String(n).padStart(width, "0");
 
@@ -29,7 +33,9 @@ const createTokenWithRetry = async ({ department, queueDay, customer }) => {
       throw e;
     }
   }
-  throw new Error("Failed to generate token. Try again.");
+  const error = new Error(errorMessage("unableToProcess"));
+  error.statusCode = 500;
+  throw error;
 };
 
 export const issueToken = async (req, res) => {
@@ -38,21 +44,21 @@ export const issueToken = async (req, res) => {
   // Validate required field
   if (!department) {
     res.status(400);
-    throw new Error("department is required");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   // Ensure user is authenticated (required for QR scanning flow)
   // Frontend must have called GET /api/qr/validate first to check auth status
   if (!req.user || !req.user._id) {
     res.status(401);
-    throw new Error("Authentication required. Please log in to join the queue.");
+    throw new Error(errorMessage("authenticationFailed"));
   }
 
   // Parse date or use today
   const targetDate = date ? parseDateOnly(date) : getTodayDateOnly();
   if (!targetDate) {
     res.status(400);
-    throw new Error("date must be in YYYY-MM-DD format");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   // Check if queue is active for the department on the target date
@@ -64,7 +70,7 @@ export const issueToken = async (req, res) => {
 
   if (!queueDay) {
     res.status(400);
-    throw new Error("Queue is not active for this department on the selected date");
+    throw new Error(errorMessage("unableToProcess"));
   }
 
   // Create token with authenticated user as customer
@@ -92,6 +98,7 @@ export const issueToken = async (req, res) => {
   // Return newly created token
   res.status(201).json({
     success: true,
+    message: successMessage("submissionSuccessful"),
     data: token
   });
 };
@@ -104,6 +111,7 @@ export const getMyTokenHistory = async (req, res) => {
 
   res.json({
     success: true,
+    message: successMessage("requestAuthorized"),
     data: tokens,
   });
 };
@@ -122,13 +130,13 @@ export const listTokens = async (req, res) => {
     .populate("customer", "-password")
     .sort({ issuedAt: 1 });
 
-  res.json({ success: true, data: tokens });
+  res.json({ success: true, message: successMessage("requestAuthorized"), data: tokens });
 };
 
 const setStatus = async ({ req, tokenId, status, counterId, note }) => {
   const token = await Token.findById(tokenId);
   if (!token) {
-    const err = new Error("Token not found");
+    const err = new Error(errorMessage("submissionFailed"));
     err.statusCode = 404;
     throw err;
   }
@@ -185,7 +193,7 @@ export const serveNext = async (req, res) => {
 
   if (!department || !counterId) {
     res.status(400);
-    throw new Error("department and counterId are required");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const today = getTodayDateOnly();
@@ -193,46 +201,46 @@ export const serveNext = async (req, res) => {
   const queueDay = await QueueDay.findOne({ department, date: today, status: "active" });
   if (!queueDay) {
     res.status(400);
-    throw new Error("Queue is not active today");
+    throw new Error(errorMessage("unableToProcess"));
   }
 
   const nextToken = await Token.findOne({ queueDay: queueDay._id, status: "waiting" }).sort({ issuedAt: 1 });
   if (!nextToken) {
     res.status(404);
-    throw new Error("No waiting tokens");
+    throw new Error(errorMessage("unableToProcess"));
   }
 
   const updated = await setStatus({ req, tokenId: nextToken._id, status: "called", counterId, note: "Serve Next" });
-  res.json({ success: true, data: updated });
+  res.json({ success: true, message: successMessage("actionExecuted"), data: updated });
 };
 
 export const callToken = async (req, res) => {
   const { counterId } = req.body;
   const token = await setStatus({ req, tokenId: req.params.id, status: "called", counterId, note: "Called to counter" });
-  res.json({ success: true, data: token });
+  res.json({ success: true, message: successMessage("actionExecuted"), data: token });
 };
 
 export const serveToken = async (req, res) => {
   const { counterId } = req.body;
   const token = await setStatus({ req, tokenId: req.params.id, status: "serving", counterId, note: "Service started" });
-  res.json({ success: true, data: token });
+  res.json({ success: true, message: successMessage("actionExecuted"), data: token });
 };
 
 export const completeToken = async (req, res) => {
   const { counterId } = req.body;
   const token = await setStatus({ req, tokenId: req.params.id, status: "completed", counterId, note: "Service completed" });
-  res.json({ success: true, data: token });
+  res.json({ success: true, message: successMessage("actionExecuted"), data: token });
 };
 
 export const missToken = async (req, res) => {
   const { counterId } = req.body;
   const token = await setStatus({ req, tokenId: req.params.id, status: "missed", counterId, note: "Customer missed" });
-  res.json({ success: true, data: token });
+  res.json({ success: true, message: successMessage("actionExecuted"), data: token });
 };
 
 export const cancelToken = async (req, res) => {
   const token = await setStatus({ req, tokenId: req.params.id, status: "cancelled", note: "Cancelled" });
-  res.json({ success: true, data: token });
+  res.json({ success: true, message: successMessage("actionExecuted"), data: token });
 };
 
 export const getTokenStatus = async (req, res) => {
@@ -242,7 +250,7 @@ export const getTokenStatus = async (req, res) => {
 
   if (!token) {
     res.status(404);
-    throw new Error("Token not found");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   let positionInLine = 0;
@@ -284,6 +292,7 @@ export const getTokenStatus = async (req, res) => {
 
   res.json({
     success: true,
+    message: successMessage("operationCompleted"),
     data: {
       tokenId: token._id,
       tokenNumber: token.tokenNumber,

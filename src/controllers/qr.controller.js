@@ -3,6 +3,10 @@ import Department from "../model/department.model.js";
 import QueueDay from "../model/queueDay.model.js";
 import { getTodayDateOnly } from "../utils/dateOnly.js";
 import { getAuthenticatedUserFromRequest } from "../middlewares/auth.middleware.js";
+import { getMessage } from "../config/messages.js";
+
+const successMessage = (key) => getMessage("success", key);
+const errorMessage = (key) => getMessage("error", key);
 
 /**
  * Generates a QR code that encodes a URL for joining a queue
@@ -17,7 +21,7 @@ export const generateQR = async (req, res) => {
     if (!department) {
         return res.status(400).json({
             success: false,
-            message: "department query parameter is required",
+            message: errorMessage("submissionFailed"),
         });
     }
 
@@ -39,7 +43,7 @@ export const generateQR = async (req, res) => {
         console.error("QR code generation error:", err);
         res.status(500).json({
             success: false,
-            message: "Failed to generate QR code. Please try again.",
+            message: errorMessage("unableToProcess"),
         });
     }
 };
@@ -59,14 +63,14 @@ export const validateQRCode = async (req, res) => {
     // Validate required query parameter
     if (!department) {
         res.status(400);
-        throw new Error("department query parameter is required");
+        throw new Error(errorMessage("submissionFailed"));
     }
 
     // Verify department exists and is active
     const dept = await Department.findById(department).select("_id name description isActive");
     if (!dept || !dept.isActive) {
         res.status(404);
-        throw new Error("Department not found or is inactive");
+        throw new Error(errorMessage("submissionFailed"));
     }
 
     // Check if queue is active for today
@@ -79,7 +83,7 @@ export const validateQRCode = async (req, res) => {
 
     if (!queueDay) {
         res.status(400);
-        throw new Error("Queue is closed for today. Please try again during business hours.");
+        throw new Error(errorMessage("unableToProcess"));
     }
 
     // Resolve the signed session or bearer token if present.
@@ -99,9 +103,7 @@ export const validateQRCode = async (req, res) => {
             queueStatus: queueDay.status,
             isAuthenticated,
             userName,
-            message: isAuthenticated
-                ? `Welcome ${userName}! Ready to join queue: ${dept.name}`
-                : "Please log in to join the queue"
+            message: successMessage("operationCompleted"),
         }
     });
 };

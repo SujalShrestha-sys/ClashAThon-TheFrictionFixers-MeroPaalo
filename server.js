@@ -25,7 +25,7 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    return callback(new Error(`CORS blocked for origin: ${origin}`));
+    return callback(new Error(`CORS blocked for origin: ${origin}. Add this origin to CLIENT_URL in the backend environment.`));
   },
   credentials: true,
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
@@ -33,7 +33,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser())
 
@@ -87,7 +86,7 @@ connectDB()
       console.log(`App is listening at http://localhost:${port}`),
     );
   })
-  .catch((err) => {
-    console.log("Error connecting DB,", err.message);
+.catch((err) => {
+    console.log("Error connecting DB:", err.message);
     process.exit(1);
   });

@@ -1,23 +1,27 @@
 import Counter from "../model/counter.model.js";
 import Department from "../model/department.model.js";
 import User from "../model/user.model.js";
+import { getMessage } from "../config/messages.js";
+
+const successMessage = (key) => getMessage("success", key);
+const errorMessage = (key) => getMessage("error", key);
 
 export const createCounter = async (req, res) => {
   const { department } = req.body;
 
   if (!department) {
     res.status(400);
-    throw new Error("department is required");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const dept = await Department.findById(department);
   if (!dept) {
     res.status(404);
-    throw new Error("Department not found");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const counter = await Counter.create({ ...req.body });
-  res.status(201).json({ success: true, data: counter });
+  res.status(201).json({ success: true, message: successMessage("dataSaved"), data: counter });
 };
 
 export const getCounters = async (req, res) => {
@@ -31,7 +35,7 @@ export const getCounters = async (req, res) => {
     .populate("staff", "-password")
     .sort({ createdAt: -1 });
 
-  res.json({ success: true, data: counters });
+  res.json({ success: true, message: successMessage("requestAuthorized"), data: counters });
 };
 
 export const updateCounter = async (req, res) => {
@@ -41,9 +45,9 @@ export const updateCounter = async (req, res) => {
   });
   if (!counter) {
     res.status(404);
-    throw new Error("Counter not found");
+    throw new Error(errorMessage("submissionFailed"));
   }
-  res.json({ success: true, data: counter });
+  res.json({ success: true, message: successMessage("dataSaved"), data: counter });
 };
 
 export const assignStaff = async (req, res) => {
@@ -52,29 +56,29 @@ export const assignStaff = async (req, res) => {
   const counter = await Counter.findById(req.params.id);
   if (!counter) {
     res.status(404);
-    throw new Error("Counter not found");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   if (staffId) {
     const staff = await User.findById(staffId).select("role department");
     if (!staff) {
       res.status(404);
-      throw new Error("Staff user not found");
+      throw new Error(errorMessage("submissionFailed"));
     }
     if (!["staff", "admin"].includes(staff.role)) {
       res.status(400);
-      throw new Error("User is not staff/admin");
+      throw new Error(errorMessage("authorizationDenied"));
     }
 
     // Enforce department scope for staff users; admin can be assigned across departments.
     if (staff.role === "staff") {
       if (!staff.department) {
         res.status(400);
-        throw new Error("Staff must be assigned to a department before counter assignment");
+        throw new Error(errorMessage("submissionFailed"));
       }
       if (String(staff.department) !== String(counter.department)) {
         res.status(400);
-        throw new Error("Staff department does not match counter department");
+        throw new Error(errorMessage("submissionFailed"));
       }
     }
   }
@@ -82,5 +86,5 @@ export const assignStaff = async (req, res) => {
   counter.staff = staffId || null;
   await counter.save();
 
-  res.json({ success: true, data: counter });
+  res.json({ success: true, message: successMessage("actionExecuted"), data: counter });
 };

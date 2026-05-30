@@ -3,6 +3,10 @@ import jwt from "jsonwebtoken";
 import User from "../model/user.model.js";
 import sendEmail from "../utils/sendEmail.js";
 import crypto from "crypto";
+import { getMessage } from "../config/messages.js";
+
+const successMessage = (key) => getMessage("success", key);
+const errorMessage = (key) => getMessage("error", key);
 
 const signToken = (id, role) =>
   jwt.sign({ _id: id, role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
@@ -26,7 +30,7 @@ export const register = async (req, res) => {
 
   if (!name || !email || !password) {
     res.status(400);
-    throw new Error("name, email, and password are required");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const existing = await User.findOne({
@@ -35,7 +39,7 @@ export const register = async (req, res) => {
 
   if (existing) {
     res.status(409);
-    throw new Error("User already exists");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const hashed = await bcrypt.hash(password, 10);
@@ -53,6 +57,7 @@ export const register = async (req, res) => {
 
   res.status(201).json({
     success: true,
+    message: successMessage("submissionSuccessful"),
     data: {
       user: {
         id: user._id,
@@ -70,26 +75,27 @@ export const login = async (req, res) => {
 
   if (!email || !password) {
     res.status(400);
-    throw new Error("email and password are required");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const user = await User.findOne({ email: email.toLowerCase() });
 
   if (!user) {
     res.status(401);
-    throw new Error("Invalid credentials");
+    throw new Error(errorMessage("authenticationFailed"));
   }
 
   const ok = await bcrypt.compare(password, user.password);
   if (!ok) {
     res.status(401);
-    throw new Error("Invalid credentials");
+    throw new Error(errorMessage("authenticationFailed"));
   }
 
   res.cookie("token", signToken(user._id, user.role), getCookieOptions());
 
   res.status(200).json({
     success: true,
+    message: successMessage("requestAuthorized"),
     data: {
       user: {
         id: user._id,
@@ -106,7 +112,7 @@ export const logout = async (req, res) => {
 
   return res.status(200).json({
     success: true,
-    message: "Logged out successfully",
+    message: successMessage("actionExecuted"),
   });
 };
 export const forgotPassword = async (req, res) => {
@@ -118,7 +124,7 @@ export const forgotPassword = async (req, res) => {
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: "If that email exists, a reset link has been sent.",
+        message: successMessage("operationCompleted"),
       });
     }
 
@@ -145,13 +151,13 @@ export const forgotPassword = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "If that email exists, a reset link has been sent.",
+      message: successMessage("operationCompleted"),
     });
   } catch (error) {
     console.error("Forgot password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: errorMessage("unableToProcess"),
     });
   }
 };
@@ -170,19 +176,19 @@ export const validateResetToken = async (req, res) => {
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: "Invalid or expired reset token",
+        message: errorMessage("submissionFailed"),
       });
     }
 
     return res.status(200).json({
       success: true,
-      message: "Valid reset token",
+      message: successMessage("requestAuthorized"),
     });
   } catch (error) {
     console.error("Validate reset token error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: errorMessage("unableToProcess"),
     });
   }
 };
@@ -193,7 +199,7 @@ export const resetPassword = async (req, res) => {
     const { password } = req.body;
 
     if (!password) {
-      return res.status(400).json({ success: false, message: "Password is required" });
+      return res.status(400).json({ success: false, message: errorMessage("submissionFailed") });
     }
 
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
@@ -206,7 +212,7 @@ export const resetPassword = async (req, res) => {
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: "Invalid or expired reset token",
+        message: errorMessage("submissionFailed"),
       });
     }
 
@@ -220,13 +226,13 @@ export const resetPassword = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Password reset successfully",
+      message: successMessage("submissionSuccessful"),
     });
   } catch (error) {
     console.error("Reset password error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal server error",
+      message: errorMessage("unableToProcess"),
     });
   }
 };

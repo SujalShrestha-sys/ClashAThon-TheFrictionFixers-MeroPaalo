@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../model/user.model.js";
+import { getMessage } from "../config/messages.js";
 
 const getTokenFromRequest = (req) => {
   const auth = req.headers.authorization;
@@ -7,6 +8,18 @@ const getTokenFromRequest = (req) => {
   const cookieToken = req.cookies?.token;
 
   return bearerToken || cookieToken || null;
+};
+
+const getAuthErrorMessage = (error) => {
+  if (error?.name === "TokenExpiredError") {
+    return getMessage("error", "authenticationFailed");
+  }
+
+  if (error?.name === "JsonWebTokenError") {
+    return getMessage("error", "authenticationFailed");
+  }
+
+  return getMessage("error", "authenticationFailed");
 };
 
 export const getAuthenticatedUserFromRequest = async (req) => {
@@ -44,24 +57,30 @@ export const protect = async (req, res, next) => {
     // If no token found, reject request
     if (!token) {
       res.status(401);
-      throw new Error("Not authorized. Please log in first.");
+      throw new Error(getMessage("error", "authenticationFailed"));
     }
 
     // Verify JWT signature and expiry
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      res.status(401);
+      throw new Error(getAuthErrorMessage(error));
+    }
     const userId = decoded.id || decoded._id;
 
     // Validate token payload contains user ID
     if (!userId) {
       res.status(401);
-      throw new Error("Not authorized. Invalid token payload.");
+      throw new Error(getMessage("error", "authenticationFailed"));
     }
 
     // Find user in database and attach to request
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findById(userId).select("-password").exec();
     if (!user) {
       res.status(401);
-      throw new Error("Not authorized. User not found.");
+      throw new Error(getMessage("error", "authenticationFailed"));
     }
 
     // Attach user to request for downstream handlers
@@ -69,7 +88,7 @@ export const protect = async (req, res, next) => {
     next();
   } catch (e) {
     res.status(401);
-    next(new Error("Not authorized. Invalid or expired token."));
+    next(new Error(e.message || getMessage("error", "authenticationFailed")));
   }
 };
 
@@ -84,13 +103,13 @@ export const authorize =
       // Ensure user was authenticated by protect middleware
       if (!req.user) {
         res.status(401);
-        throw new Error("Not authorized. Please log in first.");
+        throw new Error(getMessage("error", "authenticationFailed"));
       }
 
       // Check if user's role is in the allowed roles
       if (!roles.includes(req.user.role)) {
         res.status(403);
-        throw new Error(`Forbidden. This action requires one of these roles: ${roles.join(", ")}`);
+        throw new Error(getMessage("error", "authorizationDenied"));
       }
 
       next();

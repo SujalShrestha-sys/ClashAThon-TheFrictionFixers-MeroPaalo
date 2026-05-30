@@ -1,19 +1,23 @@
 import QueueDay from "../model/queueDay.model.js";
 import Token from "../model/token.model.js";
 import { getTodayDateOnly, parseDateOnly } from "../utils/dateOnly.js";
+import { getMessage } from "../config/messages.js";
+
+const successMessage = (key) => getMessage("success", key);
+const errorMessage = (key) => getMessage("error", key);
 
 export const getAdminDashboard = async (req, res) => {
   const { department, date } = req.query;
 
   if (!department) {
     res.status(400);
-    throw new Error("department is required");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const targetDate = date ? parseDateOnly(date) : getTodayDateOnly();
   if (date && !targetDate) {
     res.status(400);
-    throw new Error("date must be in YYYY-MM-DD format");
+    throw new Error(errorMessage("submissionFailed"));
   }
 
   const queueDay = await QueueDay.findOne({
@@ -27,6 +31,7 @@ export const getAdminDashboard = async (req, res) => {
   if (!queueDay) {
     return res.json({
       success: true,
+      message: successMessage("requestAuthorized"),
       data: {
         department,
         queueStatus,
@@ -82,6 +87,7 @@ export const getAdminDashboard = async (req, res) => {
 
   res.json({
     success: true,
+    message: successMessage("requestAuthorized"),
     data: {
       department,
       queueStatus,
