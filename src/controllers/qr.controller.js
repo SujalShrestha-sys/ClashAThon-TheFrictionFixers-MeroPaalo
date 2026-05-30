@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import Department from "../model/department.model.js";
 import QueueDay from "../model/queueDay.model.js";
 import { getTodayDateOnly } from "../utils/dateOnly.js";
+import { getAuthenticatedUserFromRequest } from "../middlewares/auth.middleware.js";
 
 /**
  * Generates a QR code that encodes a URL for joining a queue
@@ -81,9 +82,10 @@ export const validateQRCode = async (req, res) => {
         throw new Error("Queue is closed for today. Please try again during business hours.");
     }
 
-    // Check if user is authenticated (optional)
-    const isAuthenticated = !!req.user;
-    const userName = req.user?.name || null;
+    // Resolve the signed session or bearer token if present.
+    const user = await getAuthenticatedUserFromRequest(req);
+    const isAuthenticated = !!user;
+    const userName = user?.name || null;
 
     // Return validation result with helpful guidance message for frontend
     res.status(200).json({

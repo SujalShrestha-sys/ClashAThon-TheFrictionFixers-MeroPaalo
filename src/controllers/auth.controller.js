@@ -8,11 +8,16 @@ const signToken = (id, role) =>
   jwt.sign({ _id: id, role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
 
 const getCookieOptions = () => {
+  const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
   const isProd = process.env.NODE_ENV === "production";
+  const isHttpsClient = clientUrl.startsWith("https://");
+  const sameSite = isProd || isHttpsClient ? "None" : "Lax";
+
   return {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? "None" : "Lax",
+    secure: sameSite === "None",
+    sameSite,
+    path: "/",
   };
 };
 

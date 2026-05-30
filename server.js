@@ -14,13 +14,26 @@ dotenv.config({ path: "./.env" });
 
 const app = express();
 const port = process.env.PORT || 5000;
+const allowedOrigins = (process.env.CLIENT_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
-app.use(cors({
-  origin: [
-    process.env.CLIENT_URL,
-  ],
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
-}));
+  methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser())
 
@@ -39,7 +52,11 @@ connectDB()
     const server = http.createServer(app);
 
     const io = new Server(server, {
-      cors: { origin: "*", methods: ["GET", "POST", "PATCH", "DELETE"] },
+      cors: {
+        origin: allowedOrigins.length > 0 ? allowedOrigins : true,
+        credentials: true,
+        methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+      },
     });
 
     app.set("io", io);

@@ -1,6 +1,35 @@
 import jwt from "jsonwebtoken";
 import User from "../model/user.model.js";
 
+const getTokenFromRequest = (req) => {
+  const auth = req.headers.authorization;
+  const bearerToken = auth && auth.startsWith("Bearer ") ? auth.split(" ")[1] : null;
+  const cookieToken = req.cookies?.token;
+
+  return bearerToken || cookieToken || null;
+};
+
+export const getAuthenticatedUserFromRequest = async (req) => {
+  try {
+    const token = getTokenFromRequest(req);
+
+    if (!token) {
+      return null;
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const userId = decoded.id || decoded._id;
+
+    if (!userId) {
+      return null;
+    }
+
+    return User.findById(userId).select("-password").exec();
+  } catch (error) {
+    return null;
+  }
+};
+
 /**
  * Middleware to verify JWT token and attach user to request
  * Accepts token from:
@@ -10,15 +39,7 @@ import User from "../model/user.model.js";
  */
 export const protect = async (req, res, next) => {
   try {
-    // Extract token from Authorization header (Bearer scheme)
-    const auth = req.headers.authorization;
-    const bearerToken = auth && auth.startsWith("Bearer ") ? auth.split(" ")[1] : null;
-
-    // Extract token from httpOnly cookie
-    const cookieToken = req.cookies?.token;
-
-    // Use bearer token if available, otherwise use cookie token
-    const token = bearerToken || cookieToken;
+    const token = getTokenFromRequest(req);
 
     // If no token found, reject request
     if (!token) {
