@@ -17,6 +17,6 @@ router.post("/open", protect, authorize("admin", "staff"), asyncHandler(openQueu
 router.patch("/:id/close", protect, authorize("admin", "staff"), asyncHandler(closeQueueDay));
 router.patch("/:id/pause", protect, authorize("admin"), asyncHandler(pauseQueueDay));
 router.patch("/:id/resume", protect, authorize("admin"), asyncHandler(resumeQueueDay));
-router.post("/:id/reset", protect, authorize("admin"), asyncHandler(resetQueueDay));
+router.post("/:id/reset", protect, authorize("admin", "staff"), asyncHandler(resetQueueDay));
 
 export default router;

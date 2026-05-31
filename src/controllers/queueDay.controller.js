@@ -122,6 +122,14 @@ export const resetQueueDay = async (req, res) => {
     throw new Error(errorMessage("submissionFailed"));
   }
 
+  const actorDepartmentId = String(req.user?.department?._id || req.user?.department || "");
+  const queueDepartmentId = String(qd.department || "");
+
+  if (req.user?.role === "staff" && actorDepartmentId !== queueDepartmentId) {
+    res.status(403);
+    throw new Error(errorMessage("authorizationDenied"));
+  }
+
   const upd = await Token.updateMany(
     { queueDay: qd._id, status: { $in: ["waiting", "called", "serving"] } },
     { $set: { status: "cancelled" } }
