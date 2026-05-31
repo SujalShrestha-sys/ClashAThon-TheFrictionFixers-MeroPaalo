@@ -11,6 +11,21 @@ const errorMessage = (key) => getMessage("error", key);
 const signToken = (id, role) =>
   jwt.sign({ _id: id, role }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || "7d" });
 
+const buildJoinQueueNextStep = (department) => {
+  if (!department) {
+    return null;
+  }
+
+  const clientUrl = (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+
+  return {
+    type: "joinQueue",
+    redirectUrl: `${clientUrl}/join?department=${encodeURIComponent(department)}&takeToken=1`,
+    department,
+    takeTokenEnabled: true,
+  };
+};
+
 const getCookieOptions = () => {
   const clientUrl = process.env.CLIENT_URL || "http://localhost:5173";
   const isProd = process.env.NODE_ENV === "production";
@@ -27,6 +42,7 @@ const getCookieOptions = () => {
 
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
+  const department = req.body.department || req.query.department || null;
 
   if (!name || !email || !password) {
     res.status(400);
@@ -65,13 +81,15 @@ export const register = async (req, res) => {
         email: user.email,
         role: user.role,
         department: null,
-      }
+      },
+      next: buildJoinQueueNextStep(department),
     },
   });
 };
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  const department = req.body.department || req.query.department || null;
 
   if (!email || !password) {
     res.status(400);
@@ -101,9 +119,10 @@ export const login = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-      role: user.role,
-      department: user.department,
-      }
+        role: user.role,
+        department: user.department,
+      },
+      next: buildJoinQueueNextStep(department),
     },
   });
 };
