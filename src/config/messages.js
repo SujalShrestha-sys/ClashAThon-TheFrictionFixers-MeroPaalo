@@ -8,8 +8,9 @@ export const LOCALES = {
       submissionSuccessful: "Submission successful.",
     },
     error: {
-      authenticationFailed: "Authentication failed. Invalid or expired token.",
-      authorizationDenied: "Authorization denied. You do not have permission.",
+      authenticationFailed: "Authentication failed. Invalid email or password.",
+      authorizationDenied:
+        "403 Forbidden. You do not have permission to perform this action.",
       generic: "An error occurred. Please try again.",
       unableToProcess: "Unable to process your request at the moment.",
       submissionFailed: "Submission failed. Please check your input.",
@@ -26,4 +27,3 @@ export const getMessage = (type, key, locale = DEFAULT_LOCALE) => {
     LOCALES[DEFAULT_LOCALE].error.generic
   );
 };
-

@@ -29,6 +29,14 @@ export const openQueueDay = async (req, res) => {
     throw new Error(errorMessage("submissionFailed"));
   }
 
+  const actorDepartmentId = String(req.user?.department?._id || req.user?.department || "");
+  const requestedDepartmentId = String(department);
+
+  if (req.user?.role === "staff" && actorDepartmentId !== requestedDepartmentId) {
+    res.status(403);
+    throw new Error(errorMessage("authorizationDenied"));
+  }
+
   const d = parseDateOnly(date);
   if (!d) {
     res.status(400);
@@ -51,6 +59,14 @@ export const closeQueueDay = async (req, res) => {
   if (!qd) {
     res.status(404);
     throw new Error(errorMessage("submissionFailed"));
+  }
+
+  const actorDepartmentId = String(req.user?.department?._id || req.user?.department || "");
+  const queueDepartmentId = String(qd.department || "");
+
+  if (req.user?.role === "staff" && actorDepartmentId !== queueDepartmentId) {
+    res.status(403);
+    throw new Error(errorMessage("authorizationDenied"));
   }
 
   qd.status = "closed";

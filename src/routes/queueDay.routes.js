@@ -13,8 +13,8 @@ import {
 const router = Router();
 
 router.get("/", protect, authorize("admin", "staff"), asyncHandler(getQueueDays));
-router.post("/open", protect, authorize("admin"), asyncHandler(openQueueDay));
-router.patch("/:id/close", protect, authorize("admin"), asyncHandler(closeQueueDay));
+router.post("/open", protect, authorize("admin", "staff"), asyncHandler(openQueueDay));
+router.patch("/:id/close", protect, authorize("admin", "staff"), asyncHandler(closeQueueDay));
 router.patch("/:id/pause", protect, authorize("admin"), asyncHandler(pauseQueueDay));
 router.patch("/:id/resume", protect, authorize("admin"), asyncHandler(resumeQueueDay));
 router.post("/:id/reset", protect, authorize("admin"), asyncHandler(resetQueueDay));
