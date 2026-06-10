@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import Department from "../model/department.model.js";
 import QueueDay from "../model/queueDay.model.js";
+import Token from "../model/token.model.js";
 import { getTodayDateOnly } from "../utils/dateOnly.js";
 import { getAuthenticatedUserFromRequest } from "../middlewares/auth.middleware.js";
 import { getMessage } from "../config/messages.js";
@@ -67,7 +68,7 @@ export const validateQRCode = async (req, res) => {
     }
 
     // Verify department exists and is active
-    const dept = await Department.findById(department).select("_id name description isActive");
+    const dept = await Department.findById(department).select("_id name description isActive avgServiceTime");
     if (!dept || !dept.isActive) {
         res.status(404);
         throw new Error(errorMessage("submissionFailed"));
@@ -77,13 +78,38 @@ export const validateQRCode = async (req, res) => {
     const today = getTodayDateOnly();
     const queueDay = await QueueDay.findOne({
         department: dept._id,
-        date: today,
-        status: "active"
+        date: today
     }).select("_id status");
 
-    if (!queueDay) {
-        res.status(400);
-        throw new Error(errorMessage("unableToProcess"));
+    const queueStatus = queueDay ? queueDay.status : "closed";
+
+    let aheadCount = 0;
+    let estimatedWaitMinutes = 0;
+
+    if (queueDay && queueStatus === "active") {
+        aheadCount = await Token.countDocuments({
+            queueDay: queueDay._id,
+            status: "waiting"
+        });
+
+        const avgServiceMinutes = dept.avgServiceTime ?? 5;
+        const recentCompleted = await Token.find({
+            queueDay: queueDay._id,
+            status: "completed",
+            calledAt: { $ne: null },
+            completedAt: { $ne: null },
+        })
+            .sort({ completedAt: -1 })
+            .limit(30)
+            .select("calledAt completedAt");
+
+        let computedAvg = avgServiceMinutes;
+        if (recentCompleted.length) {
+            const totalMs = recentCompleted.reduce((sum, t) => sum + (t.completedAt - t.calledAt), 0);
+            computedAvg = Math.max(1, Math.round(totalMs / recentCompleted.length / 60000));
+        }
+
+        estimatedWaitMinutes = aheadCount * computedAvg;
     }
 
     // Resolve the signed session or bearer token if present.
@@ -100,7 +126,9 @@ export const validateQRCode = async (req, res) => {
                 name: dept.name,
                 description: dept.description
             },
-            queueStatus: queueDay.status,
+            queueStatus,
+            aheadCount,
+            estimatedWaitMinutes,
             isAuthenticated,
             userName,
             message: successMessage("operationCompleted"),
