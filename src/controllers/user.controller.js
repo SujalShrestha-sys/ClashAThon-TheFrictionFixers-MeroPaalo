@@ -1,5 +1,6 @@
 import User from "../model/user.model.js";
 import Department from "../model/department.model.js";
+import bcrypt from "bcryptjs";
 import { getMessage } from "../config/messages.js";
 
 const successMessage = (key) => getMessage("success", key);
@@ -109,7 +110,7 @@ export const listUsers = async (req, res) => {
 
 export const updateUser = async (req, res) => {
   const { userId } = req.params;
-  const { name, email, phone, role, department } = req.body;
+  const { name, email, phone, role, department, password } = req.body;
 
   const user = await User.findById(userId);
   if (!user) {
@@ -122,6 +123,7 @@ export const updateUser = async (req, res) => {
     typeof email === "string" ? email.trim().toLowerCase() : undefined;
   const nextPhone = typeof phone === "string" ? phone.trim() : undefined;
   const nextRole = typeof role === "string" ? role.trim() : undefined;
+  const nextPassword = typeof password === "string" ? password : undefined;
   const nextDepartment =
     department === null || department === ""
       ? null
@@ -204,6 +206,16 @@ export const updateUser = async (req, res) => {
     }
   }
 
+  if (nextPassword !== undefined) {
+    if (!nextPassword) {
+      res.status(400);
+      throw new Error(errorMessage("submissionFailed"));
+    }
+
+    const hashedPassword = await bcrypt.hash(nextPassword, 10);
+    user.password = hashedPassword;
+  }
+
   await user.save();
   await user.populate("department", "name");
 
@@ -217,6 +229,7 @@ export const updateUser = async (req, res) => {
       phone: user.phone,
       role: user.role,
       department: user.department,
+      passwordUpdated: nextPassword !== undefined,
     },
   });
 };
