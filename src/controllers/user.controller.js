@@ -23,7 +23,7 @@ export const assignRole = async (req, res) => {
   }
 
   user.role = role;
-  if (role !== "staff") {
+  if (role !== "staff" && role !== "admin") {
     user.department = null;
   }
   await user.save();
@@ -51,7 +51,7 @@ export const assignDepartment = async (req, res) => {
     throw new Error(errorMessage("submissionFailed"));
   }
 
-  if (user.role !== "staff") {
+  if (user.role !== "staff" && user.role !== "admin") {
     res.status(400);
     throw new Error(errorMessage("authorizationDenied"));
   }
@@ -182,7 +182,7 @@ export const updateUser = async (req, res) => {
     }
 
     user.role = nextRole;
-    if (nextRole !== "staff") {
+    if (nextRole !== "staff" && nextRole !== "admin") {
       user.department = null;
     }
   }
@@ -191,7 +191,7 @@ export const updateUser = async (req, res) => {
     if (nextDepartment === null) {
       user.department = null;
     } else {
-      if (user.role !== "staff") {
+      if (user.role !== "staff" && user.role !== "admin") {
         res.status(400);
         throw new Error(errorMessage("authorizationDenied"));
       }
