@@ -9,6 +9,9 @@ export const LOCALES = {
     },
     error: {
       authenticationFailed: "Authentication failed. Invalid email or password.",
+      authenticationRequired: "Authentication required. Please log in again.",
+      sessionExpired: "Your session has expired. Please log in again.",
+      invalidToken: "Invalid authentication token.",
       authorizationDenied:
         "403 Forbidden. You do not have permission to perform this action.",
       generic: "An error occurred. Please try again.",

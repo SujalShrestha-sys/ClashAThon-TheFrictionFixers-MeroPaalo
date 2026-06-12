@@ -51,7 +51,7 @@ export const issueToken = async (req, res) => {
   // Frontend must have called GET /api/qr/validate first to check auth status
   if (!req.user || !req.user._id) {
     res.status(401);
-    throw new Error(errorMessage("authenticationFailed"));
+    throw new Error(errorMessage("authenticationRequired"));
   }
 
   // Parse date or use today

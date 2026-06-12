@@ -12,14 +12,14 @@ const getTokenFromRequest = (req) => {
 
 const getAuthErrorMessage = (error) => {
   if (error?.name === "TokenExpiredError") {
-    return getMessage("error", "authenticationFailed");
+    return getMessage("error", "sessionExpired");
   }
 
   if (error?.name === "JsonWebTokenError") {
-    return getMessage("error", "authenticationFailed");
+    return getMessage("error", "invalidToken");
   }
 
-  return getMessage("error", "authenticationFailed");
+  return getMessage("error", "invalidToken");
 };
 
 export const getAuthenticatedUserFromRequest = async (req) => {
@@ -57,7 +57,7 @@ export const protect = async (req, res, next) => {
     // If no token found, reject request
     if (!token) {
       res.status(401);
-      throw new Error(getMessage("error", "authenticationFailed"));
+      throw new Error(getMessage("error", "authenticationRequired"));
     }
 
     // Verify JWT signature and expiry
@@ -73,14 +73,14 @@ export const protect = async (req, res, next) => {
     // Validate token payload contains user ID
     if (!userId) {
       res.status(401);
-      throw new Error(getMessage("error", "authenticationFailed"));
+      throw new Error(getMessage("error", "invalidToken"));
     }
 
     // Find user in database and attach to request
     const user = await User.findById(userId).select("-password").exec();
     if (!user) {
       res.status(401);
-      throw new Error(getMessage("error", "authenticationFailed"));
+      throw new Error(getMessage("error", "sessionExpired"));
     }
 
     // Attach user to request for downstream handlers
@@ -88,7 +88,7 @@ export const protect = async (req, res, next) => {
     next();
   } catch (e) {
     res.status(401);
-    next(new Error(e.message || getMessage("error", "authenticationFailed")));
+    next(new Error(e.message || getMessage("error", "authenticationRequired")));
   }
 };
 
@@ -103,7 +103,7 @@ export const authorize =
       // Ensure user was authenticated by protect middleware
       if (!req.user) {
         res.status(401);
-        throw new Error(getMessage("error", "authenticationFailed"));
+        throw new Error(getMessage("error", "authenticationRequired"));
       }
 
       // Check if user's role is in the allowed roles
